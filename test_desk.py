@@ -1,5 +1,6 @@
 import unittest
 from Desk import T9Desk
+import numpy as np
 
 
 class MyTestCase(unittest.TestCase):
@@ -22,7 +23,7 @@ class MyTestCase(unittest.TestCase):
         # TODO: check with step, tuzdyk, move
 
     def test_get_dest_cell(self):
-        print('test_get_dest_cell')
+        # print('test_get_dest_cell')
         self.assertEqual(9, self.env.cell_size, 'this test is designed for standard board size')
         self.assertEqual(-self.env.cell_size, self.env.get_dest_cell(1))
         for i in range(2, self.env.cell_size):
@@ -109,8 +110,61 @@ class MyTestCase(unittest.TestCase):
         self.assertEqual(total_sum, env.ball_sum()[1])
         self.assertEqual(1, env.tuzdyk['p2'])
 
+    def test_finish_cases(self):
+        env = self.env
+        self.assertEqual(9, self.env.cell_size, 'this test is designed for standard board size')
+        env.desk['p1'] = np.array([0, 0, 0, 0, 0, 0, 0, 0, 1])
+        env.desk['p2'] = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0])
+        env.tuzdyk['p1'] = 1
+        # env.render()
+        _, reward, done, _ = env.step(9)
+        # env.render()
+        self.assertEqual(True, done)
+        self.assertEqual(0, env.win_count['p1'])
+        self.assertEqual(0, env.win_count['p2'])
+        self.assertEqual(1, env.win_count['draw'])
+        self.assertEqual(1, env.win_count['total'])
 
+        env.reset(reset_score=True)
+        env.desk['p1'] = np.array([0, 0, 0, 0, 0, 0, 0, 0, 1])
+        env.desk['p2'] = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0])
+        # env.render()
+        _, reward, done, _ = env.step(9)
+        # env.render()
+        self.assertEqual(False, done)
+        self.assertEqual(0, env.win_count['p1'])
+        self.assertEqual(0, env.win_count['p2'])
+        self.assertEqual(0, env.win_count['draw'])
+        self.assertEqual(0, env.win_count['total'])
+        _, reward, done, _ = env.step(1)
+        # env.render()
+        self.assertEqual(True, done)
+        self.assertEqual(0, env.win_count['p1'])
+        self.assertEqual(1, env.win_count['p2'])
+        self.assertEqual(0, env.win_count['draw'])
+        self.assertEqual(1, env.win_count['total'])
 
+        env.reset(reset_score=True)
+        env.score['p1'] = 71
+        env.render()
+        _, reward, done, _ = env.step(2)
+        env.render()
+        self.assertEqual(False, done)
+        self.assertEqual(0, env.win_count['p1'])
+        self.assertEqual(0, env.win_count['p2'])
+        self.assertEqual(0, env.win_count['draw'])
+        self.assertEqual(0, env.win_count['total'])
+        env.render()
+        env.desk['p2'][5 - 1] = 0
+        env.tuzdyk['p1'] = 5
+        env.render()
+        _, reward, done, _ = env.step(3)
+        env.render()
+        self.assertEqual(True, done)
+        self.assertEqual(1, env.win_count['p1'])
+        self.assertEqual(0, env.win_count['p2'])
+        self.assertEqual(0, env.win_count['draw'])
+        self.assertEqual(1, env.win_count['total'])
 
 
 if __name__ == '__main__':

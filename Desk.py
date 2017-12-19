@@ -7,8 +7,8 @@ class T9Desk:
         # init
         self.p_name = {'p1': p1_id, 'p2': p2_id}
         self.cell_size = cell_size
-        self.win_count = {'p1': 0, 'p2': 0, 'draw': 0}
-        self.game_played_count = 0
+        self.win_count = {'p1': 0, 'p2': 0, 'draw': 0, 'total': 0}
+        # self.game_played_count = 0
         self.observation_space = self.cell_size * 2 + 2
         self.action_space = self.cell_size
 
@@ -18,6 +18,7 @@ class T9Desk:
         self.who_move = None
         self.score = None
         self.tuzdyk = None
+        self.done = None
         self.reset()
 
         # other
@@ -26,17 +27,19 @@ class T9Desk:
         self.action_1to9 = None
         self.total_sum = self.cell_size**2 * 2
 
-    def reset(self):
+    def reset(self, reset_score=False):
         self.desk = {'p1': np.zeros(self.cell_size, dtype=np.int16) + self.cell_size,
                      'p2': np.zeros(self.cell_size, dtype=np.int16) + self.cell_size}
         self.move_number = 0
         self.who_move = False
         self.score = {'p1': 0, 'p2': 0}
         self.tuzdyk = {'p1': -1, 'p2': -2}
+        self.done = False
         self.action_1to9 = None
+        if reset_score:
+            self.win_count = {'p1': 0, 'p2': 0, 'draw': 0, 'total': 0}
 
     def state(self):
-        # return np.array(self.desk['p1'] + self.desk['p2'] + [self.score['p1'], self.score['p2']], dtype=np.int8)
         temp = np.append(self.desk['p1'], self.desk['p2'])
         return np.append(temp, np.array([self.score['p1'], self.score['p2']]))
 
@@ -55,25 +58,25 @@ class T9Desk:
         t1 = list(map(str, self.desk['p1']))
         t2 = list(map(str, self.desk['p2']))
         if self.tuzdyk['p1'] >= 1:
-            t1[self.tuzdyk['p1']-1] = "*"
+            t2[self.tuzdyk['p1']-1] = "*"
         if self.tuzdyk['p2'] >= 0:
-            t2[self.tuzdyk['p2']-1] = "*"
+            t1[self.tuzdyk['p2']-1] = "*"
         # print(t1, '\n', t2)
         for i in range(self.cell_size - 1, -1, -1):
             p2 += "{0:3s}".format(t2[i])
         for i in range(self.cell_size):
             p1 += "{0:3s}".format(t1[i])
         p2 += "\t{}{}\tscore: {}\tWin: {}\tDraw: {}".format(self.p_name['p2'], star(self.who_move), self.score['p2'],
-                                                            self.win_count['p2'],self.win_count['draw'])
+                                                            self.win_count['p2'], self.win_count['draw'])
         p1 += "\t{}{}\tscore: {}\tWin: {}\tTotal: {}".format(self.p_name['p1'], star(not self.who_move),
                                                              self.score['p1'], self.win_count['p1'],
-                                                             self.game_played_count)
+                                                             self.win_count['total'])
         if do_render:
             print(hod)
             print(p2)
             print(p1)
             ball_sum, total_sum = self.ball_sum()
-            print('sum: ', ball_sum, 'total_sum:', total_sum)
+            print('sum: ', ball_sum, 'total_sum:', total_sum, 'Done:', self.done)
         return '{}\n{}\n{}\n'.format(hod, p2, p1)
 
     def get_action_space(self):
@@ -89,13 +92,25 @@ class T9Desk:
 
     def step(self, action_1to9):
         self.assert_range_1to9(action_1to9)
+        ball_sum, total_sum = self.ball_sum()
+        pr, op = self.who_moves_str()
+        score_before = self.score[pr]
+        # make a move
         self.move(action_1to9)
-        # TODO: check if game is done
-        # TODO: if done: print results and increment win counter
+        # check if game is finished
+        self.done = self.check_done()
+        score_after = self.score[pr]
+        reward = score_after - score_before
+        if self.done:
+            # decide who wins
+            self.update_win_counter()
+        # return info
+        next_state = self.state()
+        # switch to another round only after all steps are done
         self.move_number += 1
         self.who_move = ~self.who_move
-        assert self.total_sum == self.ball_sum()[1]
-        return self.state()
+        assert total_sum == self.ball_sum()[1]
+        return next_state, reward, self.done, {'optional': None}
 
     def move(self, action_1to9):
         self.assert_range_1to9(action_1to9)
@@ -105,7 +120,6 @@ class T9Desk:
         self.take_balls(self.dest_cell)
         self.set_tuzdyk(self.dest_cell)
         self.take_tuzdyk()
-
 
     def distribute_balls_iterative(self, action_1to9):
         # self.assert_range_1to9(action_1to9)
@@ -200,17 +214,28 @@ class T9Desk:
         return self.dest_cell
 
     def check_done(self):
-        # p1 > 81
-        # p2 > 81
-        # is empty
-        # draw
+        pr, op = self.who_moves_str()
+        if self.score[pr] > self.cell_size**2:
+            return True
+        if self.score[op] > self.cell_size**2:
+            return True
+        if self.desk[op].sum() == 0:
+            return True
         return False
 
-    def update_win(self):
-        # p1 > 81
-        # p2 > 81
-        # is empty
-        # draw
+    def update_win_counter(self):
+        pr, op = self.who_moves_str()
+        # TODO: add assertions
+        if self.score[pr] > self.cell_size ** 2:
+            self.win_count[pr] += 1
+        if self.score[op] > self.cell_size ** 2:
+            self.win_count[op] += 1
+        if (self.desk[op].sum() == 0) & (self.desk[pr].sum() == 0):
+            self.win_count['draw'] += 1
+        elif self.desk[op].sum() == 0:
+            # self.score[pr] += self.desk[pr].sum()
+            self.win_count[pr] += 1
+        self.win_count['total'] += 1
         return None
 
     # additional methods
