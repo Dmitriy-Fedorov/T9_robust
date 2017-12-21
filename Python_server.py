@@ -1,38 +1,44 @@
-'''
-import socket
+import tornado.web
+import tornado.websocket
+import tornado.httpserver
+import tornado.ioloop
+import os
 
 
-TCP_IP = '127.0.0.1'
-TCP_PORT = 5005
-BUFFER_SIZE = 1024  # Normally 1024, but we want fast response
+class WebSocketHandler(tornado.websocket.WebSocketHandler):
+    def open(self):
+        print("WebSocket opened")
+        # pass
 
-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-s.bind((TCP_IP, TCP_PORT))
-s.listen(1)
+    def on_message(self, message):
+        self.write_message(u"Your message was: " + message)
 
-conn, addr = s.accept()
-print('Connection address:', addr)
-while 1:
-    data = conn.recv(BUFFER_SIZE)
-    if not data: break
-    print("received data:", data)
-    conn.send(data)  # echo
-conn.close()
-'''
-
-import asyncio
-import datetime
-import random
-import websockets
+    def on_close(self):
+        pass
 
 
-async def time(websocket, path):
-    while True:
-        now = datetime.datetime.utcnow().isoformat() + 'Z'
-        await websocket.send(now)
-        await asyncio.sleep(random.random() * 3)
+class IndexPageHandler(tornado.web.RequestHandler):
+    def get(self):
+        self.render("First.html")
 
-start_server = websockets.serve(time, '127.0.0.1', 5006)
 
-asyncio.get_event_loop().run_until_complete(start_server)
-asyncio.get_event_loop().run_forever()
+class Application(tornado.web.Application):
+    def __init__(self):
+        handlers = [
+            (r'/', IndexPageHandler),
+            (r'/ws', WebSocketHandler)
+        ]
+        APP_DIR = os.path.dirname(os.path.realpath(__file__))
+        print(APP_DIR)
+        settings = {
+            "template_path": os.path.join(APP_DIR, "templates"),
+            "static_path": os.path.join(APP_DIR, "static")
+        }
+        tornado.web.Application.__init__(self, handlers, **settings)
+
+
+if __name__ == '__main__':
+    ws_app = Application()
+    server = tornado.httpserver.HTTPServer(ws_app)
+    server.listen(8080)
+    tornado.ioloop.IOLoop.instance().start()
