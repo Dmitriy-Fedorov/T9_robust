@@ -1,5 +1,5 @@
 import numpy as np
-
+import pandas as pd
 
 class T9Desk:
 
@@ -42,6 +42,10 @@ class T9Desk:
     def state(self):
         temp = np.append(self.desk['p1'], self.desk['p2'])
         return np.append(temp, np.array([self.score['p1'], self.score['p2']]))
+
+    def state_json(self):
+        temp = np.append(self.state(), np.array([self.tuzdyk['p1'], self.tuzdyk['p2'], self.who_move]))
+        return pd.Series(temp).to_json(orient='values')
 
     def render(self, do_render=True):
         def star(truth):
@@ -95,20 +99,23 @@ class T9Desk:
         ball_sum, total_sum = self.ball_sum()
         pr, op = self.who_moves_str()
         score_before = self.score[pr]
-        # make a move
-        self.move(action_1to9)
-        # check if game is finished
-        self.done = self.check_done()
-        score_after = self.score[pr]
-        reward = score_after - score_before
+        if self.desk[pr][action_1to9-1] > 0:
+            # make a move
+            self.move(action_1to9)
+            # check if game is finished
+            self.done = self.check_done()
+            score_after = self.score[pr]
+            reward = score_after - score_before
+            # switch to another round only after all steps are done
+            self.move_number += 1
+            self.who_move = ~self.who_move
+        else:
+            reward = -100
         if self.done:
             # decide who wins
             self.update_win_counter()
         # return info
         next_state = self.state()
-        # switch to another round only after all steps are done
-        self.move_number += 1
-        self.who_move = ~self.who_move
         assert total_sum == self.ball_sum()[1]
         return next_state, reward, self.done, {'optional': None}
 
@@ -174,7 +181,7 @@ class T9Desk:
     def set_tuzdyk(self, dest_cell_1to9):
         # self.assert_range_1to9(action_1to9)
         pr, op = self.who_moves_str()
-        if self.tuzdyk[pr] < 0:
+        if (self.tuzdyk[pr] < 0) & (dest_cell_1to9 > 0):
             if (self.desk[op][dest_cell_1to9 - 1] == 3) & (dest_cell_1to9 != self.cell_size):
                 if (dest_cell_1to9 != self.tuzdyk[op]) & (dest_cell_1to9 != self.tuzdyk[pr]):
                     self.tuzdyk[pr] = dest_cell_1to9

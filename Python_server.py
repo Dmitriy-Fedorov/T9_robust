@@ -3,18 +3,43 @@ import tornado.websocket
 import tornado.httpserver
 import tornado.ioloop
 import os
+import json
+from Desk import T9Desk
 
 
-class WebSocketHandler(tornado.websocket.WebSocketHandler):
+class T9Handler(tornado.websocket.WebSocketHandler):
+
+    def initialize(self):
+        # Initialize game parameters.
+        self.env = T9Desk()
+
     def open(self):
         print("WebSocket opened")
-        # pass
+        self.initialize()
+        # self.write_message(u"Dimas sends greetings!")
+        print(self.env.state_json())
+        self.write_message(self.env.state_json())
 
     def on_message(self, message):
-        self.write_message(u"Your message was: " + message)
+        data = json.loads(message)
+        print('MESSAGE:', message)
+        print('DATA:', data)
+        # print('DATA:', data[0], data[1])
+        # self.env.tuzdyk = {'p1': 1, 'p2': 2}
+        # self.write_message(u"Your message was: " + message)
+        if data[0] == 'action':
+            action = data[1]
+            who_moves = self.env.who_move
+            if (action > 10) & who_moves:
+                action -= 10
+            elif (action < 10) & who_moves:
+                action += 10
+            if action < 10:
+                self.env.step(action)
+                self.write_message(self.env.state_json())
 
     def on_close(self):
-        pass
+        print("WebSocket closed")
 
 
 class IndexPageHandler(tornado.web.RequestHandler):
@@ -26,7 +51,7 @@ class Application(tornado.web.Application):
     def __init__(self):
         handlers = [
             (r'/', IndexPageHandler),
-            (r'/ws', WebSocketHandler)
+            (r'/ws', T9Handler)
         ]
         APP_DIR = os.path.dirname(os.path.realpath(__file__))
         print(APP_DIR)
