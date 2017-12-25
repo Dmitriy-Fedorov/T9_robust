@@ -1,4 +1,4 @@
-console.log('dimas')
+console.log('dimas');
 var canvas = document.querySelector('canvas');
 //console.log(canvas)
 canvas.width = window.innerWidth;
@@ -116,7 +116,7 @@ function init(){
         circleArray.push(new Circle(x, y, dx, dy, radius));
     }
 }
-/****************************************DESK*************************************************************************/
+/****************************************CELL*************************************************************************/
 
 function Cell(centerX, centerY, width, height, cellIndex){
     this.centerX = centerX;
@@ -146,37 +146,37 @@ function Cell(centerX, centerY, width, height, cellIndex){
         }*/
         return ( mouse.x > this.upperCorner.x && mouse.x < this.bottomCorner.x &&
                  mouse.y > this.upperCorner.y && mouse.y < this.bottomCorner.y);
-    }
+    };
 
     this.drawDest = function(){
         c.strokeStyle = 'red';
         c.lineWidth = 2;
         c.strokeRect(this.upperCorner.x, this.upperCorner.y, this.width, this.height);
-    }
+    };
 
     this.drawCurrent = function(){
         c.strokeStyle = 'blue';
         c.lineWidth = 2;
         c.strokeRect(this.upperCorner.x, this.upperCorner.y, this.width, this.height);
-    }
+    };
 
     this.getDestCell = function(){
         var action_1to9 = this.id;
         var action_0to8 = action_1to9 - 1;
-        if(this.value == 1){
-            if(action_1to9 == 9){
+        if(this.value === 1){
+            if(action_1to9 === 9){
                 this.destCell = 1;
             }else{
                 this.destCell = -action_1to9 - 1;
             }
-        }else if(this.value == 0){
+        }else if(this.value === 0){
             this.destCell = - action_1to9;
         }else{
             var temp = (action_0to8 + this.value) % (9 * 2);
             //console.log('temp:', temp, action_0to8, action_1to9, this.value, this.id);
             if(temp > 9){
                 this.destCell = temp - 9;
-            }else if(temp == 0){
+            }else if(temp === 0){
                 this.destCell = 9;
             }else{
                 this.destCell = -temp;
@@ -196,7 +196,7 @@ function Cell(centerX, centerY, width, height, cellIndex){
             }
         }
         return this.destCell
-    }
+    };
 
     this.draw = function(){
         c.fillStyle = '#15AB89';
@@ -209,14 +209,14 @@ function Cell(centerX, centerY, width, height, cellIndex){
         c.textBaseline = "middle";
         c.fillStyle = 'black';
         c.fillText(this.value, this.centerX, this.centerY);
-    }
+    };
 
     this.update = function(){
         if( click.x > this.upperCorner.x &&
             click.x < this.bottomCorner.x &&
             click.y > this.upperCorner.y &&
             click.y < this.bottomCorner.y){
-                console.log(this.cellIndex, click);
+                console.log('moved from',this.cellIndex,'to',this.getDestCell(), click);
                 //this.value += 1;
                 ws.send(JSON.stringify(['action', this.cellIndex]));
 
@@ -231,7 +231,7 @@ function Cell(centerX, centerY, width, height, cellIndex){
 
            }
         this.draw();
-    }
+    };
 
     this.resize = function(centerX, centerY, width, height){
         this.centerX = centerX;
@@ -244,7 +244,7 @@ function Cell(centerX, centerY, width, height, cellIndex){
                              y: this.centerY + this.height/2};
     }
 }
-
+/****************************************SCORE TABLE*****************************************************************/
 function ScoreTable(deskCenterX, deskCenterY, deskWidth, deskHeight) {
     this.score = {p1: 0, p2: 0};
     this.whoMoves = false;
@@ -306,7 +306,7 @@ function ScoreTable(deskCenterX, deskCenterY, deskWidth, deskHeight) {
         this.init(deskCenterX, deskCenterY, deskWidth, deskHeight);
     }
 }
-
+/****************************************DESK**********************************************************************/
 function Desk(){
     this.centerX = canvas.width / 2;
     this.centerY = canvas.height / 2;
@@ -393,11 +393,8 @@ var ws = new WebSocket("ws://192.168.1.102:8080/ws");
 
 ws.onmessage = function(event) {
     //alert("Получены данные " + event.data);
-    console.log("Получены данные: " + event.data);
+    //console.log("Получены данные: " + event.data);
     var data = JSON.parse(event.data);
-    //data = JSON.parse(data);
-    //data = JSON.parse(data);
-    //ws.send("javascipt");
     desk.updateCells(data);
     console.log(data);
     console.log(data[0]);
@@ -436,7 +433,6 @@ function animate(){
     }
 
     //console.log(desk.cellArray[0].mouseOverCell());
-
     desk.draw();
 
 }
